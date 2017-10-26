@@ -1,0 +1,13 @@
+lookup_options:
+  simp_consul::config_hash:
+    merge: hash
+simp_consul::puppet_cert_path: '/etc/puppetlabs/puppet/ssl'
+simp_consul::config_hash:
+  acl_datacenter: "dc1"
+  acl_default_policy: "deny"
+  ports:
+    https: 8501
+    http: 8500
+  data_dir: '/opt/consul'
+  node_name: "%{::hostname}"
+  client_addr: '0.0.0.0'
