@@ -2,11 +2,11 @@
   "name": "simp-simp_consul",
   "version": "0.1.0",
   "author": "simp",
-  "summary": "",
+  "summary": "SIMP profile for solarkennedy/consul",
   "license": "Apache-2.0",
-  "source": "",
-  "project_page": "",
-  "issues_url": "",
+  "source": "https://github.com/simp/pupmod-simp-simp_consul",
+  "project_page": "https://github.com/simp/pupmod-simp-simp_consul",
+  "issues_url": "https://simp-project.atlassian.net",
   "tags": [
     "simp"
   ],
