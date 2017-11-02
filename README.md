@@ -86,8 +86,3 @@ Run `puppet agent -t`. This will:
 
 At this point, you can configure your server as you see fit.  See
 `init.pp` for a list of configuration options.
-
-
-#### Client
-
-
