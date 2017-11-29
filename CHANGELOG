@@ -1,0 +1,10 @@
+* Thu Oct 26 2017 Nick Markowski <nicholas.markowski@onyxpoint.com> - 0.1.0
+- Initial release
+- Moved simp_consul profile from libkv::consul to this module
+  - Added documentation inline + README
+  - Added basic unit test and updated beaker suite
+  - `firewall` is now catalyzed
+  - Replaced dont_copy_certs with manage_pki
+  - Renamed consul_bootstrap fact to consul_bootstrapped
+  - Consolidated cert logic, allow for pki file specification
+  - Updated .travis to include CI credentials

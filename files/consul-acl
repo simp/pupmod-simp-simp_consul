@@ -1,0 +1,133 @@
+#!/bin/sh
+
+# Give consul some time to attempt a join, then realize it's bootstrapping
+# a new cluster
+sleep 10
+
+gen_agent_acl() {
+  CLIENTCERT=$1
+  shift
+  NODENAME=$1
+  if [ "${NODENAME}" = "" ] ; then
+    NODENAME="${CLIENTCERT}"
+  fi
+  POLICY='{
+  "Name": "%%CLIENTCERT%%",
+  "Type": "client",
+  "Rules": "{
+	\"key\":{
+		\"\":{
+			\"policy\":\"write\"
+		},
+		\"puppet/\":{
+			\"policy\":\"deny\"
+		}
+	},
+	\"operator\":\"read\"
+       ,
+	\"node\":{
+		\"\":{
+			\"policy\":\"read\"
+		},
+		\"%%NODENAME%%\":{
+			\"policy\":\"write\"
+		}
+	}
+	,
+	\"agent\":{
+		\"\":{
+			\"policy\":\"read\"
+		},
+		\"%%NODENAME%%\":{
+			\"policy\":\"write\"
+		}
+	}
+	,
+	\"event\":{
+		\"\":{
+			\"policy\":\"read\"
+		}
+	}
+	,
+	\"service\":{
+		\"\":{
+			\"policy\":\"read\"
+		},
+		\"%%NODENAME%%\":{
+			\"policy\":\"write\"
+		}
+	}
+	,
+	\"session\":{
+		\"\":{
+			\"policy\":\"read\"
+		},
+		\"%%NODENAME%%\":{
+			\"policy\":\"write\"
+		}
+	}
+  }"
+}'
+  echo "${POLICY}" | grep -v ^# | tr -d '\t' | tr -d '\n' | sed s@%%NODENAME%%@${NODENAME}@g | sed s@%%CLIENTCERT%%@${CLIENTCERT}@g
+}
+
+gen_token() {
+
+	case "${TYPE}" in
+		libkv)
+			POLICY='{
+  "Name": "libkv-acl",
+  "Type": "client",
+  "Rules": "{\"key\":{\"puppet/\":{\"policy\":\"write\"}},\"operator\":\"read\"}"
+}'
+			;;
+		agent)
+			POLICY="$(gen_agent_acl "${CLIENTCERT}" "${NODENAME}")"
+			;;
+	esac
+        if [ "${OUTPUTFILE}" = "" ] ; then
+		curl -s --request PUT --data "${POLICY}" -q http://localhost:8500/v1/acl/create?token="${TOKEN}" | cut -d '"' -f 4
+	else
+		curl -s --request PUT --data "${POLICY}" -q http://localhost:8500/v1/acl/create?token="${TOKEN}" | cut -d '"' -f 4 >${OUTPUTFILE}
+	fi
+}
+
+get_token() {
+	curl -s --request GET  -q http://localhost:8500/v1/acl/list
+}
+
+while getopts ":t:m:o:" o; do
+    case "${o}" in
+        t)
+            export TYPE=${OPTARG}
+            ;;
+        m)
+            export MASTER_TOKEN_PATH=${OPTARG}
+            ;;
+        o)
+            export OUTPUTFILE=${OPTARG}
+            ;;
+    esac
+done
+
+if [ "${TYPE}" = "" ] ; then
+export TYPE="libkv"
+fi
+if [ "${MASTER_TOKEN_PATH}" = "" ] ; then
+export  MASTER_TOKEN_PATH="/etc/simp/bootstrap/consul/master_token"
+fi
+
+export TOKEN=$(cat ${MASTER_TOKEN_PATH})
+
+shift $((OPTIND-1))
+export METHOD=$1
+shift
+export CLIENTCERT=$1
+shift
+export NODENAME=$1
+
+case "${METHOD}" in
+   gen)
+      gen_token
+      ;;
+esac

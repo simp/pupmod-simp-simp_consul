@@ -1,0 +1,94 @@
+# The testing matrix considers ruby/puppet versions supported by SIMP and PE:
+# ------------------------------------------------------------------------------
+#  release    pup   ruby      eol
+# PE 2016.4   4.7   2.1.9  TBD (LTS)
+# PE 2016.5   4.8   2.1.9  2017-10-31
+# SIMP6.0.0   4.8   2.1.9  TBD
+# PE 2017.1   4.9   2.1.9  2017-10-31
+# PE 2017.2   4.10  2.1.9  TBD
+---
+language: ruby
+cache: bundler
+sudo: false
+
+bundler_args: --without development system_tests --path .vendor
+
+notifications:
+  email: false
+
+addons:
+  apt:
+    packages:
+      - rpm
+
+before_install:
+  - rm -f Gemfile.lock
+
+jobs:
+  allow_failures:
+    - env: STRICT_VARIABLES=yes TRUSTED_NODE_DATA=yes PUPPET_VERSION="~> 5.0"
+
+  include:
+    - stage: check
+      rvm: 2.1.9
+      script:
+        - bundle exec rake check:dot_underscore
+        - bundle exec rake check:test_file
+        - bundle exec rake pkg:check_version
+        - bundle exec rake metadata_lint
+        - bundle exec rake compare_latest_tag
+
+    - stage: spec
+      rvm: 2.1.9
+      env: STRICT_VARIABLES=yes TRUSTED_NODE_DATA=yes PUPPET_VERSION="~> 5.0"
+      script:
+        - bundle exec rake spec
+
+    - stage: spec
+      rvm: 2.1.9
+      env: STRICT_VARIABLES=yes TRUSTED_NODE_DATA=yes PUPPET_VERSION="~> 4.10.0"
+      script:
+        - bundle exec rake spec
+
+    - stage: spec
+      rvm: 2.1.9
+      env: STRICT_VARIABLES=yes TRUSTED_NODE_DATA=yes PUPPET_VERSION="~> 4.9.2"
+      script:
+        - bundle exec rake spec
+
+    - stage: spec
+      rvm: 2.1.9
+      env: STRICT_VARIABLES=yes TRUSTED_NODE_DATA=yes PUPPET_VERSION="~> 4.8.2"
+      script:
+        - bundle exec rake spec
+
+    - stage: spec
+      rvm: 2.1.9
+      env: STRICT_VARIABLES=yes TRUSTED_NODE_DATA=yes PUPPET_VERSION="~> 4.7.0"
+      script:
+        - bundle exec rake spec
+
+    # This needs to be last since we have an acceptance test
+    - stage: deploy
+      rvm: 2.1.9
+      script:
+        - true
+      before_deploy:
+        - "export PUPMOD_METADATA_VERSION=`ruby -r json -e \"puts JSON.parse(File.read('metadata.json')).fetch('version')\"`"
+        - '[[ $TRAVIS_TAG =~ ^simp-${PUPMOD_METADATA_VERSION}$|^${PUPMOD_METADATA_VERSION}$ ]]'
+      deploy:
+        - provider: releases
+          api_key:
+            secure: "onVZRnT0iipzCYaw+nLlCGkkjGxzL2YWP7qdE+cFaJrXsBXsVv8VhYkbBIGl9WCuopSht4uutUtVV300S0fI3fWwtOdN2to9tlB19cMcy0mxRQAcjTY+MClKa+OVoyFjQFT4YsYWxjn1rIqwK4Zw1GngxENnqM3xRK/eyPZgtmTtTEdpYr5EXU4+raa23mvXXvzRMD3swup3ME6eBsInYS0nnv/Xtyl3nBfh0LitlUyDeN2arY3lIsve9MUIgX2+zPTdJiiS6oJ2tE/EK5+cLUemoICxpKJBZLRNeBoYxNRn3Ug4tP0Gndg9Rj/L7XruuveUeyxJO+bGeaNbk1TLkH1usK5c3ZY6SHf7tayaggBSC44oRujHYEC91k0sy0zes36041H2igHGfuz0b1XL8AFrOrjKqD384T8umkRO3f+DTSN2FQ9VF+8liKadc4R0GLaAhf8luW+BZqxqWgjTGsIDdX89UKDwQ1imNQ01pXZwEWXMcgXbkJCVYPShXL6zlvwpZbZqWOZ0q47Au6LugesXGndLg8Mn1gnRtOWXeonscn+vMKUDZSfNCZDL16a4bwvAm65Nvw1ZPPY+EE7f7mb1izAAURLWfYHn8kNAU9bAfMgyX10Rk3H3Dkv22AOYUhDuH7pcbp/rYiPCq67i81OUqqKW1+bUmGhsoAZ1H2U="
+          skip_cleanup: true
+          on:
+            tags: true
+            condition: '($SKIP_FORGE_PUBLISH != true)'
+        - provider: puppetforge
+          user: simp
+          password:
+            secure: "iALMekE1Fb7ZvzhcyolcE1K+x9P2HDwGYL0IQWnta1YWmNRki4lXk/T/xy8HmyuCP4lX/osiKZjWA7F0hHTaStnR+AbxMBa2wItY+66Yxg6UexfUB2zO/mv/0X1OFhTFeaZIodFGySxhrAluYpezIee0AKTjeoiTWvEiFkxxACekL+4p9wU/IBgoxadBgPJ4rZqbfcJDQkK+EU7q4SVhx2L+HMKu2iNHT/KFhyfgcSP9vh0oJhm0YCYWIsGWN31bkHGKdB9xKJstYQwCLrIiKQMjUyCqt4d1pBh6KqakCxtwj5jzVq0yMZHGHuWGzvOgPxKTRMWP34h/552Vb2Il5YNALEmuKaPNaxsZ9yi+vMSkHfidW/vgOFg6JF4u/V+r6nnHfqli1Btic9mP9kmWxDpiuwH85J5ooL62EVOfPXcuWsqy+AEm1PmQm8ew/2yWtpYzoobIxk1UwZ5y9kHrRhyiA0TSxnWWv/8Uvy5zfZ/vN3L1fgpP7fV0OL32ziciJYfsz+fI/7qZrAZ3juWFNJBE6/qEM/kwYXz4wjuNFcN1cnbtcYWB3E2C+OUepy+9V+juavL14vfsAfV8ol5GQgHU/tClswa0a9xa15TmSPopY4hpIbkQfxU20bOsIPxHw668O0LpQaj1RpRzkxMKFy4VmL7JvXs588QhQ8tXcBM="
+          on:
+            tags: true
+            rvm: 2.1.9
+            condition: '($SKIP_FORGE_PUBLISH != true)'
